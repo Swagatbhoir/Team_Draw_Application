@@ -1,221 +1,720 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Boundary Draft</title>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <style>
+        /* ============================================================
+           DESIGN TOKENS
+           Existing variable names (--crease-white, --leather-red, --gold,
+           --overlay-dark, --team-bg) are preserved exactly. --team-color
+           is set live by JS via style.setProperty on each .team-box and
+           MUST keep this exact name. New tokens are added alongside for
+           the expanded "auction broadcast" design system.
+           ============================================================ */
         :root {
-            --crease-white: #ffffff;
-            --leather-red: #d32f2f;
-            --gold: #ffd700;
-            --overlay-dark: rgba(0, 0, 0, 0.85);
-            --team-bg: rgba(255, 255, 255, 0.1);
+            /* --- preserved tokens (JS-safe), refined to premium hex values --- */
+            --crease-white: #F6F7FB;
+            --leather-red: #C81E3A;
+            --gold: #D4AF37;
+            --overlay-dark: rgba(7, 10, 18, 0.9);
+            --team-bg: rgba(255, 255, 255, 0.05);
+
+            /* --- new tokens: stadium-night palette --- */
+            --pitch-navy: #070A13;
+            --pitch-navy-mid: #0E1424;
+            --pitch-navy-soft: #141B2E;
+            --emerald-live: #22C55E;
+            --gold-bright: #F2C94C;
+            --ink: #E7E9F3;
+            --ink-dim: rgba(231, 233, 243, 0.62);
+            --border-hair: rgba(255, 255, 255, 0.12);
+            --border-hair-strong: rgba(255, 255, 255, 0.22);
+            --surface-1: rgba(255, 255, 255, 0.035);
+            --surface-2: rgba(255, 255, 255, 0.06);
+            --surface-3: rgba(255, 255, 255, 0.1);
+
+            /* --- type scale --- */
+            --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+            /* --- structure --- */
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 22px;
+            --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+
+            /* --- shadows --- */
+            --shadow-card: 0 8px 20px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
+            --shadow-elevated: 0 24px 60px rgba(0, 0, 0, 0.55), 0 6px 16px rgba(0, 0, 0, 0.35);
+            --shadow-lift: 0 18px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Oswald', sans-serif;
-            background: url('https://images.unsplash.com/photo-1531415074968-036ba1b575da?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80') no-repeat center center fixed;
+            font-family: var(--font-body);
+            background:
+                radial-gradient(ellipse 120% 80% at 50% -10%, rgba(212, 175, 55, 0.08), transparent 55%),
+                linear-gradient(180deg, rgba(7, 10, 19, 0.94) 0%, rgba(7, 10, 19, 0.97) 55%, rgba(4, 6, 12, 1) 100%),
+                url('https://images.unsplash.com/photo-1531415074968-036ba1b575da?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80') no-repeat center center fixed;
             background-size: cover;
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            color: white;
+            color: var(--ink);
             padding: 20px;
-            box-sizing: border-box;
         }
 
         body::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            z-index: -1;
+            content: none;
+        }
+
+        ::selection {
+            background: var(--gold);
+            color: #171100;
+        }
+
+        a,
+        button,
+        .player-card,
+        [tabindex] {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:focus-visible,
+        .player-card:focus-visible,
+        .team-box:focus-visible {
+            outline: 2px solid var(--gold-bright);
+            outline-offset: 3px;
         }
 
         .container {
-            background-color: var(--overlay-dark);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            background:
+                linear-gradient(180deg, rgba(20, 27, 46, 0.88) 0%, rgba(10, 13, 24, 0.92) 100%);
+            padding: clamp(18px, 3vw, 34px);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-elevated);
             text-align: center;
             max-width: 1200px;
             width: 100%;
-            border: 3px solid var(--crease-white);
-            backdrop-filter: blur(5px);
+            border: 1px solid var(--border-hair-strong);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 22px;
+            position: relative;
+            overflow: hidden;
         }
 
-        h1 { margin: 0; font-size: 2.5rem; text-transform: uppercase; letter-spacing: 4px; text-shadow: 3px 3px var(--leather-red); }
+        /* subtle top hairline accent, like a broadcast panel edge */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--gold) 25%, var(--leather-red) 50%, var(--gold) 75%, transparent);
+            opacity: 0.9;
+        }
 
-        #status { font-size: 1.2rem; color: var(--gold); letter-spacing: 1px; font-weight: bold; }
+        .header-row {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
 
+        h1 {
+            margin: 0;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: clamp(1.7rem, 4vw, 2.6rem);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            background: linear-gradient(180deg, #ffffff 0%, #cfd4e6 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+            padding-bottom: 6px;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 64px;
+            height: 3px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--leather-red), var(--gold));
+        }
+
+        /* status chip: wraps #status, JS only ever sets #status.innerText so
+           this decorative shell and its sibling dot are never touched by JS */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 18px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-hair);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--emerald-live);
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+            animation: pulse-dot 2s var(--ease-premium) infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulse-dot {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        #status {
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            color: var(--gold-bright);
+            letter-spacing: 0.6px;
+            font-weight: 600;
+        }
+
+        /* ============================================================
+           AUCTION STAGE (#display-area) — a spotlight podium for the
+           current tier's players. Pure ::before/::after decoration:
+           no extra DOM nodes, so drop targets & event.target.closest
+           logic in JS are completely unaffected.
+           ============================================================ */
         #display-area {
-            background: rgba(255,255,255,0.05);
-            min-height: 150px;
+            background: radial-gradient(ellipse 70% 120% at 50% 0%, rgba(212, 175, 55, 0.12), transparent 65%), var(--surface-1);
+            min-height: 170px;
             display: flex;
             flex-wrap: nowrap;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px dashed rgba(255,255,255,0.3);
+            gap: 18px;
+            padding: 26px 20px;
+            border-radius: var(--radius-md);
+            border: 1.5px dashed var(--border-hair);
             overflow-x: auto;
-            transition: background 0.2s;
+            position: relative;
+            transition: background 0.25s var(--ease-premium), border-color 0.25s var(--ease-premium);
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-hair-strong) transparent;
+        }
+
+        #display-area::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        #display-area::-webkit-scrollbar-thumb {
+            background: var(--border-hair-strong);
+            border-radius: 8px;
         }
 
         #teams-area {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 15px;
-            margin-top: 10px;
+            margin-top: 4px;
         }
 
         .team-box {
-            --team-color: var(--leather-red); 
-            background: var(--team-bg);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
+            --team-color: var(--leather-red);
+            background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
+            border: 1px solid var(--border-hair);
+            border-radius: var(--radius-md);
             min-height: 250px;
             display: flex;
             flex-direction: column;
-            transition: all 0.2s ease;
+            transition: box-shadow 0.25s var(--ease-premium), border-color 0.25s var(--ease-premium), transform 0.25s var(--ease-premium);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .team-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--team-color);
+            opacity: 0.9;
         }
 
         .team-box.drag-over {
             border-color: var(--team-color);
-            box-shadow: 0 0 15px var(--team-color);
-            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 1px var(--team-color), 0 0 26px -4px var(--team-color);
+            background: linear-gradient(180deg, var(--surface-3), var(--surface-2));
+            transform: translateY(-2px);
         }
 
         .team-header {
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-bottom: 2px solid var(--team-color);
-            border-radius: 10px 10px 0 0;
+            background: rgba(0, 0, 0, 0.28);
+            padding: 12px 14px;
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-hair);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            color: var(--ink);
         }
 
         .team-roster {
             flex-grow: 1;
-            padding: 10px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 9px;
+            position: relative;
         }
 
+        /* CSS-only empty state for an empty roster — purely presentational,
+           uses the :empty pseudo-class so it needs no JS or extra markup */
+        .team-roster:empty::after {
+            content: 'Awaiting picks…';
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            min-height: 60px;
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+            font-style: italic;
+            color: var(--ink-dim);
+            border: 1.5px dashed var(--border-hair);
+            border-radius: var(--radius-sm);
+        }
+
+        /* ============================================================
+           PLAYER CARDS
+           .player-card / .player-num / .player-avatar / .player-name are
+           produced verbatim by createCardElement() in JS — class names
+           are untouched; only presentation changes here.
+           ============================================================ */
         .player-card {
-            background: var(--crease-white);
-            color: #222;
-            padding: 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background: linear-gradient(165deg, #ffffff 0%, var(--crease-white) 100%);
+            color: #1a1d29;
+            padding: 22px 18px 18px;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            box-shadow: var(--shadow-card);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 200px;
-            flex-shrink: 0; 
-            cursor: grab; 
-            border-left: 5px solid var(--leather-red); 
+            width: 190px;
+            flex-shrink: 0;
+            cursor: grab;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-left: 4px solid var(--leather-red);
             user-select: none;
             position: relative;
-            transition: transform 0.2s;
+            transition: transform 0.22s var(--ease-premium), box-shadow 0.22s var(--ease-premium);
         }
 
-        .player-card:active { cursor: grabbing; transform: scale(0.95); }
+        .player-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lift);
+        }
+
+        .player-card:active {
+            cursor: grabbing;
+            transform: scale(0.96) rotate(-1deg);
+            box-shadow: var(--shadow-card);
+        }
+
+        /* ------------------------------------------------------------
+           SHUFFLE / DEAL-IN ANIMATION
+           randomizeCurrentRow() clears #display-area and re-appends a
+           freshly shuffled set of brand-new .player-card elements — so
+           a plain CSS animation on #display-area .player-card fires
+           automatically every time you click "Randomize Row", no JS
+           needed. Each card is staggered slightly for a "dealing cards"
+           feel. Roster cards (.team-roster .player-card) intentionally
+           do NOT get this animation since JS moves existing nodes there
+           rather than creating new ones.
+           ------------------------------------------------------------ */
+        @keyframes dealCard {
+            0% {
+                opacity: 0;
+                transform: translateY(26px) scale(0.8) rotate(-8deg);
+            }
+
+            55% {
+                opacity: 1;
+                transform: translateY(-6px) scale(1.04) rotate(2deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1) rotate(0deg);
+            }
+        }
+
+        #display-area .player-card {
+            animation: dealCard 0.55s var(--ease-premium) both;
+        }
+
+        #display-area .player-card:nth-child(1) {
+            animation-delay: 0.00s;
+        }
+
+        #display-area .player-card:nth-child(2) {
+            animation-delay: 0.04s;
+        }
+
+        #display-area .player-card:nth-child(3) {
+            animation-delay: 0.08s;
+        }
+
+        #display-area .player-card:nth-child(4) {
+            animation-delay: 0.12s;
+        }
+
+        #display-area .player-card:nth-child(5) {
+            animation-delay: 0.16s;
+        }
+
+        #display-area .player-card:nth-child(6) {
+            animation-delay: 0.20s;
+        }
+
+        #display-area .player-card:nth-child(7) {
+            animation-delay: 0.24s;
+        }
+
+        #display-area .player-card:nth-child(8) {
+            animation-delay: 0.28s;
+        }
+
+        #display-area .player-card:nth-child(9) {
+            animation-delay: 0.32s;
+        }
+
+        #display-area .player-card:nth-child(10) {
+            animation-delay: 0.36s;
+        }
+
+        #display-area .player-card:nth-child(n+11) {
+            animation-delay: 0.4s;
+        }
+
+
 
         .player-num {
             position: absolute;
             top: 10px;
-            left: 15px;
-            font-size: 1.8rem;
-            font-weight: bold;
+            left: 14px;
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 700;
             color: var(--leather-red);
-            border-bottom: 2px solid #eee;
-            pointer-events: none; /* Stops text from grabbing the mouse */
+            border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+            pointer-events: none;
         }
 
         .player-avatar {
-            width: 70px;
-            height: 70px;
-            background-color: #f0f0f0;
+            width: 68px;
+            height: 68px;
+            background-color: #eef0f5;
             border-radius: 50%;
-            border: 2px solid #ddd;
+            border: 2px solid #fff;
+            outline: 1px solid rgba(0, 0, 0, 0.08);
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-top: 25px; 
-            margin-bottom: 15px;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
-            overflow: hidden; 
-            pointer-events: none; /* Prevents image tag from hijacking the drag */
+            margin-top: 24px;
+            margin-bottom: 14px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            pointer-events: none;
         }
 
-        .player-name { 
-            font-size: 1.6rem; 
-            word-break: break-word; 
-            line-height: 1.2; 
-            text-align: center; 
-            pointer-events: none; /* Keeps the drag clean */
+        .player-avatar svg {
+            fill: #b9bcc6 !important;
+        }
+
+        .player-name {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 600;
+            word-break: break-word;
+            line-height: 1.2;
+            text-align: center;
+            pointer-events: none;
         }
 
         .team-roster .player-card {
-            padding: 10px 15px;
-            width: auto; 
-            flex-direction: row; 
+            padding: 9px 14px;
+            width: auto;
+            flex-direction: row;
             justify-content: flex-start;
-            gap: 15px;
-            border-left: 5px solid var(--team-color); 
+            gap: 13px;
+            border-left: 4px solid var(--team-color);
         }
 
-        .team-roster .player-num { display: none; }
-        
+        .team-roster .player-card:hover {
+            transform: translateX(3px);
+        }
+
+        .team-roster .player-num {
+            display: none;
+        }
+
         .team-roster .player-avatar {
-            width: 40px;
-            height: 40px;
-            margin: 0; 
+            width: 38px;
+            height: 38px;
+            margin: 0;
             border-width: 1px;
         }
 
-        .team-roster .player-name { font-size: 1.2rem; text-align: left;}
-
-        .controls { display: flex; gap: 20px; justify-content: center; align-items: center; }
-
-        button {
-            padding: 12px 30px; font-size: 1.1rem; font-weight: bold; text-transform: uppercase;
-            cursor: pointer; border: none; border-radius: 5px; transition: all 0.2s ease;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.3); font-family: 'Oswald', sans-serif;
+        .team-roster .player-name {
+            font-size: 1.05rem;
+            text-align: left;
+            font-weight: 500;
         }
 
-        .btn-random { background-color: var(--leather-red); color: white; }
-        .btn-random:hover:not(:disabled) { background-color: #ff1744; transform: translateY(-2px); }
-        .btn-next { background-color: var(--gold); color: black; }
-        .btn-next:hover:not(:disabled) { background-color: #ffee58; transform: translateY(-2px); }
-        .btn-reset { background-color: transparent; color: #ccc; box-shadow: none; border: 1px solid #555; padding: 10px 20px; font-size: 0.9rem;}
-        .btn-reset:hover { background-color: rgba(255,255,255,0.1); color: white; border-color: white;}
-        button:disabled { background-color: #444; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
+        /* ============================================================
+           CONTROLS / BUTTONS
+           ============================================================ */
+        .controls {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
-        .empty-msg { font-style: italic; opacity: 0.6; font-size: 1.2rem; width: 100%; text-align: center;}
+        button {
+            padding: 13px 28px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            border: none;
+            border-radius: 999px;
+            transition: transform 0.18s var(--ease-premium), box-shadow 0.18s var(--ease-premium), filter 0.18s var(--ease-premium);
+            font-family: var(--font-body);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            pointer-events: none;
+        }
+
+        .btn-random {
+            background: linear-gradient(135deg, var(--leather-red), #8f1428);
+            color: white;
+            box-shadow: 0 6px 16px -4px rgba(200, 30, 58, 0.55);
+        }
+
+        .btn-random:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.12);
+            box-shadow: 0 10px 22px -4px rgba(200, 30, 58, 0.65);
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+            color: #241a00;
+            box-shadow: 0 6px 16px -4px rgba(212, 175, 55, 0.5);
+        }
+
+        .btn-next:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.08);
+            box-shadow: 0 10px 22px -4px rgba(212, 175, 55, 0.6);
+        }
+
+        .btn-reset {
+            background: transparent;
+            color: var(--ink-dim);
+            box-shadow: none;
+            border: 1px solid var(--border-hair-strong);
+            padding: 11px 22px;
+            font-size: 0.85rem;
+        }
+
+        .btn-reset:hover {
+            background: var(--surface-2);
+            color: var(--ink);
+            border-color: var(--ink-dim);
+            transform: translateY(-1px);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0) scale(0.97);
+        }
+
+        button:disabled {
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(231, 233, 243, 0.32);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            filter: none;
+        }
+
+        .empty-msg {
+            font-style: italic;
+            opacity: 0.7;
+            font-size: 1.05rem;
+            width: 100%;
+            text-align: center;
+            color: var(--ink-dim);
+            font-family: var(--font-body);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.001ms !important;
+                transition-duration: 0.001ms !important;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .player-card {
+                width: 160px;
+            }
+
+            #teams-area {
+                gap: 10px;
+            }
+
+            .team-header {
+                font-size: 0.95rem;
+                padding: 9px 8px;
+                letter-spacing: 0.8px;
+            }
+
+            .team-roster {
+                padding: 8px;
+                gap: 6px;
+            }
+
+            .team-roster .player-card {
+                padding: 7px 8px;
+                gap: 8px;
+            }
+
+            .team-roster .player-avatar {
+                width: 32px;
+                height: 32px;
+            }
+
+            .team-roster .player-name {
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .controls {
+                gap: 10px;
+            }
+
+            button {
+                padding: 12px 16px;
+                font-size: 0.7rem;
+                letter-spacing: 0.4px;
+            }
+
+            .btn-label {
+                display: none;
+            }
+
+            .btn-icon {
+                font-size: 1.2rem;
+            }
+
+            #teams-area {
+                gap: 6px;
+            }
+
+            .team-box {
+                min-height: 170px;
+            }
+
+            .team-header {
+                font-size: 0.7rem;
+                padding: 7px 4px;
+                letter-spacing: 0.4px;
+            }
+
+            .team-roster {
+                padding: 5px;
+                gap: 5px;
+            }
+
+            .team-roster .player-card {
+                padding: 5px 6px;
+                gap: 5px;
+                border-left-width: 3px;
+            }
+
+            .team-roster .player-avatar {
+                width: 24px;
+                height: 24px;
+            }
+
+            .team-roster .player-name {
+                font-size: 0.7rem;
+            }
+
+            .team-roster:empty::after {
+                font-size: 0.65rem;
+                min-height: 40px;
+            }
+        }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
 
     <div class="container">
-        <div>
+        <div class="header-row">
             <h1>AAI MAULI LEAUGE</h1>
-            <div id="status">Initializing Pavilion...</div>
+            <div class="status-pill">
+                <span class="status-dot" aria-hidden="true"></span>
+                <div id="status">Initializing Pavilion...</div>
+            </div>
         </div>
 
         <div id="display-area" ondrop="drop(event)" ondragover="allowDrop(event)">
@@ -223,25 +722,32 @@
         </div>
 
         <div class="controls">
-            <button class="btn-random" onclick="randomizeCurrentRow()" id="randBtn" disabled>Randomize Row</button>
-            <button class="btn-next" onclick="nextRow()" id="nextBtn" disabled>Next Tier</button>
-            <button class="btn-reset" onclick="resetDraft()">Reset Draft</button>
+            <button class="btn-random" onclick="randomizeCurrentRow()" id="randBtn" disabled><span class="btn-icon"
+                    aria-hidden="true">🎲</span><span class="btn-label">Randomize Row</span></button>
+            <button class="btn-next" onclick="nextRow()" id="nextBtn" disabled><span class="btn-icon"
+                    aria-hidden="true">▶</span><span class="btn-label">Next Tier</span></button>
+            <button class="btn-reset" onclick="resetDraft()"><span class="btn-icon" aria-hidden="true">↺</span><span
+                    class="btn-label">Reset Draft</span></button>
         </div>
 
         <div id="teams-area">
-            <div class="team-box" id="team-1" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="team-box" id="team-1" ondrop="drop(event)" ondragover="allowDrop(event)"
+                ondragleave="dragLeave(event)">
                 <div class="team-header">Team A</div>
                 <div class="team-roster"></div>
             </div>
-            <div class="team-box" id="team-2" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="team-box" id="team-2" ondrop="drop(event)" ondragover="allowDrop(event)"
+                ondragleave="dragLeave(event)">
                 <div class="team-header">Team B</div>
                 <div class="team-roster"></div>
             </div>
-            <div class="team-box" id="team-3" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="team-box" id="team-3" ondrop="drop(event)" ondragover="allowDrop(event)"
+                ondragleave="dragLeave(event)">
                 <div class="team-header">Team C</div>
                 <div class="team-roster"></div>
             </div>
-            <div class="team-box" id="team-4" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+            <div class="team-box" id="team-4" ondrop="drop(event)" ondragover="allowDrop(event)"
+                ondragleave="dragLeave(event)">
                 <div class="team-header">Team D</div>
                 <div class="team-roster"></div>
             </div>
@@ -250,12 +756,12 @@
 
     <script>
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQMotamr64zauixyUawesyDBAN46ZHAmLLMjYVyRO-4Yb6u4xo7-IXAj1gsL_qsw_IGxENMNkONhrBN/pub?gid=1662895339&single=true&output=csv';
-        
+
         let playerPool = [];
-        let teamNamesList = []; 
+        let teamNamesList = [];
         let currentRowIndex = 0;
-        let isRandomized = false; 
-        let modelsLoaded = false; 
+        let isRandomized = false;
+        let modelsLoaded = false;
 
         const STORAGE_STATE = 'boundaryDraftState';
 
@@ -274,13 +780,13 @@
             try {
                 const response = await fetch(SHEET_URL);
                 const data = await response.text();
-                
+
                 const allRows = data.split('\n').map(row => row.split(',').map(cell => cell.trim()));
                 initializeTeams(allRows);
-                
+
                 playerPool = allRows.slice(0, 19).filter(row => row.some(cell => cell.length > 0 && cell !== ""));
 
-                if(playerPool.length === 0) throw new Error("No data found");
+                if (playerPool.length === 0) throw new Error("No data found");
 
                 restoreState();
 
@@ -295,12 +801,12 @@
 
             try {
                 const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions());
-                
+
                 if (detection) {
                     const box = detection.box;
                     const padX = box.width * 0.4;
-                    const padYTop = box.height * 0.6; 
-                    const padYBot = box.height * 0.3; 
+                    const padYTop = box.height * 0.6;
+                    const padYBot = box.height * 0.3;
 
                     const x = Math.max(0, box.x - padX);
                     const y = Math.max(0, box.y - padYTop);
@@ -311,9 +817,9 @@
                     canvas.width = w;
                     canvas.height = h;
                     const ctx = canvas.getContext('2d');
-                    
+
                     ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
-                    
+
                     img.src = canvas.toDataURL();
                     img.dataset.cropped = "true";
                 }
@@ -322,20 +828,18 @@
             }
         }
 
-
-
         function initializeTeams(allRows) {
-            teamNamesList = []; 
+            teamNamesList = [];
             if (allRows.length >= 20) {
-                let teamData = allRows[19]; 
-                
+                let teamData = allRows[19];
+
                 for (let i = 0; i < 4; i++) {
                     if (teamData[i]) {
                         let parts = teamData[i].split('|');
                         let teamName = parts[0] ? parts[0].trim() : `Team ${String.fromCharCode(65 + i)}`;
-                        let teamColor = parts[1] ? parts[1].trim() : '#d32f2f'; 
+                        let teamColor = parts[1] ? parts[1].trim() : '#d32f2f';
 
-                        teamNamesList.push(teamName); 
+                        teamNamesList.push(teamName);
 
                         let teamBox = document.getElementById(`team-${i + 1}`);
                         if (teamBox) {
@@ -343,7 +847,7 @@
                             teamBox.querySelector('.team-header').innerText = teamName;
                         }
                     } else {
-                        teamNamesList.push(`Team ${String.fromCharCode(65 + i)}`); 
+                        teamNamesList.push(`Team ${String.fromCharCode(65 + i)}`);
                     }
                 }
             }
@@ -354,7 +858,7 @@
             let randBtn = document.getElementById('randBtn');
             let displayArea = document.getElementById('display-area');
             let poolCards = displayArea.querySelectorAll('.player-card').length;
-            
+
             if (currentRowIndex >= playerPool.length) {
                 nextBtn.disabled = true;
                 randBtn.disabled = true;
@@ -362,16 +866,16 @@
             }
 
             if (isRandomized && poolCards === 0) {
-                nextBtn.disabled = false; 
-                randBtn.disabled = true;  
-                
+                nextBtn.disabled = false;
+                randBtn.disabled = true;
+
                 if (!displayArea.querySelector('.empty-msg')) {
                     displayArea.innerHTML = `<div class="empty-msg" style="color: var(--gold); font-weight: bold; opacity: 1;">All players assigned! Click Next Tier.</div>`;
                 }
             } else {
                 nextBtn.disabled = true;
                 randBtn.disabled = false;
-                
+
                 let msg = displayArea.querySelector('.empty-msg');
                 if (msg && poolCards > 0) {
                     msg.remove();
@@ -382,12 +886,12 @@
         function allowDrop(ev) {
             ev.preventDefault();
             let target = ev.target.closest('.team-box');
-            if(target) target.classList.add('drag-over');
+            if (target) target.classList.add('drag-over');
         }
 
         function dragLeave(ev) {
             let target = ev.target.closest('.team-box');
-            if(target) target.classList.remove('drag-over');
+            if (target) target.classList.remove('drag-over');
         }
 
         function drag(ev) {
@@ -400,30 +904,30 @@
 
             let data = ev.dataTransfer.getData("text");
             let draggedCard = document.getElementById(data);
-            if(!draggedCard) return;
+            if (!draggedCard) return;
 
             let dropTarget = ev.target.closest('.team-box');
-            
+
             if (dropTarget) {
                 dropTarget.querySelector('.team-roster').appendChild(draggedCard);
             } else if (ev.target.closest('#display-area')) {
                 document.getElementById('display-area').appendChild(draggedCard);
             }
 
-            saveCurrentState(); 
-            checkNextTierStatus(); 
+            saveCurrentState();
+            checkNextTierStatus();
         }
 
         function createCardElement(name, num = '') {
             const card = document.createElement('div');
             card.className = 'player-card';
-            card.id = 'player-' + name.replace(/[^a-zA-Z0-9]/g, '') + '-' + Math.random().toString(36).substr(2, 5); 
+            card.id = 'player-' + name.replace(/[^a-zA-Z0-9]/g, '') + '-' + Math.random().toString(36).substr(2, 5);
             card.draggable = true;
             card.ondragstart = drag;
-            
-            card.dataset.name = name; 
-            card.dataset.num = num; 
-            
+
+            card.dataset.name = name;
+            card.dataset.num = num;
+
             const svgIcon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 60%; height: 60%; fill: #aaa; pointer-events: none;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
 
             // Added draggable="false" to the img tag to prevent browser image dragging
@@ -447,7 +951,7 @@
 
         function randomizeCurrentRow() {
             if (currentRowIndex >= playerPool.length) return;
-            
+
             let displayArea = document.getElementById('display-area');
             let playersToShuffle = [];
             let availableNumbers = [];
@@ -473,38 +977,38 @@
                     }
                 });
 
-                for(let i = 1; i <= playersToShuffle.length; i++) {
+                for (let i = 1; i <= playersToShuffle.length; i++) {
                     availableNumbers.push(i);
                 }
 
             } else {
                 let currentCards = displayArea.querySelectorAll('.player-card');
-                if(currentCards.length === 0) return;
-                
+                if (currentCards.length === 0) return;
+
                 playersToShuffle = Array.from(currentCards).map(card => card.dataset.name);
-                availableNumbers = Array.from(currentCards).map(card => parseInt(card.dataset.num) || 0).sort((a,b) => a - b);
+                availableNumbers = Array.from(currentCards).map(card => parseInt(card.dataset.num) || 0).sort((a, b) => a - b);
             }
-            
+
             for (let i = playersToShuffle.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [playersToShuffle[i], playersToShuffle[j]] = [playersToShuffle[j], playersToShuffle[i]];
             }
 
-            displayArea.innerHTML = ""; 
+            displayArea.innerHTML = "";
 
             playersToShuffle.forEach((name, index) => {
                 displayArea.appendChild(createCardElement(name, availableNumbers[index]));
             });
 
             saveCurrentState();
-            checkNextTierStatus(); 
+            checkNextTierStatus();
         }
 
         function nextRow() {
             if (currentRowIndex < playerPool.length - 1) {
                 currentRowIndex++;
-                isRandomized = false; 
-                
+                isRandomized = false;
+
                 document.getElementById('display-area').innerHTML = `<div class="empty-msg">Tier ${currentRowIndex + 1} players are padded up!</div>`;
                 document.getElementById('status').innerText = `CURRENT: TIER ${currentRowIndex + 1}`;
             } else {
@@ -513,13 +1017,13 @@
                 document.getElementById('status').innerText = "ALL TIERS COMPLETED";
             }
             saveCurrentState();
-            checkNextTierStatus(); 
+            checkNextTierStatus();
         }
 
         function saveCurrentState() {
             let state = {
                 index: currentRowIndex,
-                isRandomized: isRandomized, 
+                isRandomized: isRandomized,
                 pool: Array.from(document.querySelectorAll('#display-area .player-card')).map(c => ({
                     name: c.dataset.name,
                     num: c.dataset.num
@@ -536,54 +1040,55 @@
 
         function restoreState() {
             const savedStateStr = localStorage.getItem(STORAGE_STATE);
-            
+
             if (savedStateStr) {
                 let state = JSON.parse(savedStateStr);
                 currentRowIndex = state.index;
-                isRandomized = state.isRandomized || false; 
+                isRandomized = state.isRandomized || false;
 
-                for(let teamId in state.teams) {
+                for (let teamId in state.teams) {
                     let roster = document.querySelector(`#${teamId} .team-roster`);
-                    roster.innerHTML = ""; 
+                    roster.innerHTML = "";
                     state.teams[teamId].forEach(name => roster.appendChild(createCardElement(name, '')));
                 }
 
                 let displayArea = document.getElementById('display-area');
                 displayArea.innerHTML = "";
-                if(state.pool.length > 0) {
+                if (state.pool.length > 0) {
                     state.pool.forEach((playerData, idx) => {
                         let playerName = typeof playerData === 'string' ? playerData : playerData.name;
                         let playerNum = typeof playerData === 'string' ? (idx + 1) : playerData.num;
-                        
+
                         displayArea.appendChild(createCardElement(playerName, playerNum));
                     });
                 } else if (currentRowIndex >= playerPool.length) {
                     displayArea.innerHTML = `<div class="empty-msg">Draft Concluded!</div>`;
                 } else if (!isRandomized) {
-                     displayArea.innerHTML = `<div class="empty-msg">Tier ${currentRowIndex + 1} players are padded up!</div>`;
+                    displayArea.innerHTML = `<div class="empty-msg">Tier ${currentRowIndex + 1} players are padded up!</div>`;
                 }
 
-                if(currentRowIndex < playerPool.length) {
+                if (currentRowIndex < playerPool.length) {
                     document.getElementById('status').innerText = `CURRENT: TIER ${currentRowIndex + 1}`;
                 } else {
                     document.getElementById('status').innerText = "ALL TIERS COMPLETED";
                 }
 
             } else {
-                document.getElementById('status').innerText = `TIER 1 READY (${playerPool[0].filter(p=>p).length} PLAYERS)`;
+                document.getElementById('status').innerText = `TIER 1 READY (${playerPool[0].filter(p => p).length} PLAYERS)`;
             }
-            
-            checkNextTierStatus(); 
+
+            checkNextTierStatus();
         }
 
         function resetDraft() {
-            if(confirm("Are you sure you want to reset the entire draft? This clears all teams.")) {
+            if (confirm("Are you sure you want to reset the entire draft? This clears all teams.")) {
                 localStorage.removeItem(STORAGE_STATE);
-                location.reload(); 
+                location.reload();
             }
         }
 
         Promise.all([initFaceAPI(), fetchPlayers()]);
     </script>
 </body>
+
 </html>
